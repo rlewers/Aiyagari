@@ -94,7 +94,7 @@ for i in range(10000):
                 # place the maximum of V_max into the correct spot in the V matrix
                 V[a_ind][y_ind]=max(V_max)
         
-        diff_in_valfun = max(max(abs(V-Vnew)))
+        diff_in_valfun = max(max(abs(V-Vnew))) # thanks Elke!
 
         
         
