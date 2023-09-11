@@ -17,6 +17,7 @@ from scipy.interpolate import interp1d
 beta = 0.96 # discount rate
 alpha = 0.33 # capital share
 delta = 0.1 # depreciation rate 
+gamma = 1.25 # risk aversion
 
 ygrid = [0.3, 1] # productivity "shock" values 
 ny = len(ygrid)
@@ -36,7 +37,7 @@ piinfty=piinfty[0]
 # second element is fraction of workers that are high productivity
 # so multiply by productivity of each type of worker to get aggregate 
 # labor supply
-L = piinfty*ygrid # aggregate labor supply
+L = np.matmul(piinfty,ygrid) # aggregate labor supply
 
 # AGrid 
 na = 200
@@ -87,16 +88,20 @@ the representative firm's problem, and the defintion of a stationary equilibrium
     5. If this K agrees w/ our initial guess, we are done. Otherwise, repeat.'''
 
 Kinterv = [2, 6]
+lambd = np.zeros([1,na])
 diff_in_main = 1 # tells us whether our guess of K is close enough
 
 for i in range(10000): # I guess this is like setting max iterations?
-    K=(Kinterv[0]+Kinterv[1])/2 # guess aggregate capital level 
+    #K=(Kinterv[0]+Kinterv[1])/2 # guess aggregate capital level 
+    K=np.mean(Kinterv)
     # representative firm's optimality conditions determine R and W
     R = (alpha)*(K/L)**(alpha-1)+1-delta 
     W = (1-alpha)*(K/L)**(alpha)
     
     diff_in_valfun=1 # tells us whether our value function is close enough
+    k=0
     while diff_in_valfun > tol_for_vfi:
+        k+=1
         
         Vnew = V
         V = np.zeros([na, ny])
@@ -108,19 +113,24 @@ for i in range(10000): # I guess this is like setting max iterations?
             # loop over asset choices 
             for a_ind in range(na):
                 wealth = R*agrid[a_ind] + W*ygrid[y_ind]
-                wealth = [wealth]*na
-                max1 = max(wealth-agrid)
-                
-                # the below is a 200x1 row vector. It is like 1 raw in Carlos's program
-                V_max=math.log(max(max1, 1.0e-15))+beta*(np.matmul(Vnew, TransM[y_ind, :]))
+                #wealth = wealth*na
+                max1 = max(np.subtract(wealth,agrid))
+                #if y_ind==0 and a_ind==0:
+                    #print(max1)
+                # the below is a 200x1 row vector. It is like 1 row in Carlos's program
+                V_max=max(max1, 1.0e-15)**(1-gamma)/(1-gamma)+beta*(np.matmul(Vnew, TransM[y_ind][:]))
                 
                 # place stuff into the correct spot in the value, policy, and consumption matrices
                 V[a_ind, y_ind] = np.max(V_max)
+                #if y_ind==0 and a_ind==0 and i==0:
+                    #print(np.max(V_max))
                 temp = np.argmax(V_max)
                 pol_func[a_ind, y_ind] = agrid[temp]
                 con[a_ind, y_ind] = wealth - pol_func[a_ind, y_ind]
         
-        diff_in_valfun = max(max(abs(V-Vnew))) # thanks Elke!
+        diff_in_valfun = np.max(np.max(abs(V-Vnew))) # thanks Elke!
+        if i==0 and k==1:
+           print( V)
         
     # Do simulation method to get K 
     
@@ -137,18 +147,65 @@ for i in range(10000): # I guess this is like setting max iterations?
     pol_func_finer = f(a_gridfiner)
     
     # initialize a vector to put our simulated asset values into
-    a_sim = np.zeros([T+1,1])
+    a_sim = np.zeros([T,1])
     a_sim[0]=a_gridfiner[0]
     
     # Loop to update a_sim
     # need to better understand what is going on here
-    for t in range(T):
+    for t in range(T-1):
         y_idx = np.where(ysimul[t] == ygrid)[0][0]  # Find the index where ysimul(t) matches ygrid
         a_sim[t + 1] = interp1d(a_gridfiner, pol_func_finer[:, y_idx], kind='linear', fill_value='extrapolate')(a_sim[t])
+    
+    # also confused about why this is necessary 
+    #a_sim = a_sim[burn_in+1:T]
+    a_sim = a_sim[burn_in:T]
+    y_sim = ysimul[burn_in:T]
+    
+    # make new asset vectors splitting the original a_sim into high and low 
+    # productivity groups 
+    a_sim1 = a_sim[y_sim == ygrid[0]]
+    a_sim2 = a_sim[y_sim == ygrid[1]]
+    
+    # use numpy histogram to count the number of occurences of assets that fall 
+    # into each of the grid points in a_gridfiner
+    a_grid_hist = np.append(a_gridfiner, math.inf) # need a final bin 
+    ncount, _ = np.histogram(a_sim, a_grid_hist)
+    ncount1, _ = np.histogram(a_sim1, a_grid_hist)
+    ncount2, _ = np.histogram(a_sim2, a_grid_hist)
+    
+    # get the probability of being in each of the bins
+    lambd = np.divide(ncount, len(a_sim))
+    lambd1 = np.divide(ncount1, len(a_sim))
+    lambd2 = np.divide(ncount2, len(a_sim))
+    
+    # multiply element by element the probability of being in each asset bin 
+    # times the amount of assets for someone in that bin 
+    # then sum all the elements 
+    Kprime = np.sum(np.multiply(a_gridfiner, lambd))
+    
+    # apply bisection method to get a new guess for K that is updated to move our 
+    # K interval closer to what makes sense given the outcome of the simulation 
+    if Kprime>K:
+        Kinterv[0] = K 
+    else:
+        Kinterv[1] = K 
         
-    a_sim = a_sim[1+burn_in:T]
-    y_sim = ysimul[1+burn_in:T]
+    diff_in_main = np.diff(Kinterv)
+    print(f'Iteration #: {iter}, Capital Interval Difference: {diff_in_main}')
+    
+    # if we have narrowed in on a K i.e. K interval is very small, we are done
+    if diff_in_main<tol_for_loop: 
+        break
 
+# now that algorithm is complete, get final values for K and R
+Kstar = np.mean(Kinterv);
+Rstar = (alpha)*(Kstar/L)**(alpha-1)+1-delta
+
+# display final values 
+print(f'Equilibrium Capital: {Kstar}')
+print(f'Equilibrium Interest Rate: {Rstar}')
+
+# answer is wrong
         
         
         
