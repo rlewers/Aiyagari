@@ -136,7 +136,7 @@ for i in range(10000): # I guess this is like setting max iterations?
     
     # my attempt at doing the simulation in a way that makes more sense to me
 
-    T = 10000 # 10000 agents in the economy
+    # T = 10000 # 10000 agents in the economy
 
     # make a guess at the initial number of agents in each state
     Kgrid = np.zeros([na, ny]) #matrix to keep track of number of agents in each state
@@ -160,7 +160,7 @@ for i in range(10000): # I guess this is like setting max iterations?
                         # use transition probability matrix to get 
                         # the fraction that move to each productivity outcome next period
                         produc_vec_0=float(Kgrid[a_ind][y_ind])*TransM[y_ind][0]
-                        produc_vec_1=float(Kgrid[a_ind][y_ind])*TransM[y_ind][0]
+                        produc_vec_1=float(Kgrid[a_ind][y_ind])*TransM[y_ind][1]
                         
                         # add the mass of agents coming from this a and y combo
                         # to the new Kgrid
