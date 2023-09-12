@@ -134,6 +134,49 @@ for i in range(10000): # I guess this is like setting max iterations?
         
     # Do simulation method to get K 
     
+    # my attempt at doing the simulation in a way that makes more sense to me
+
+    T = 10000 # 10000 agents in the economy
+
+    # make a guess at the initial number of agents in each state
+    Kgrid = np.zeros([na, ny]) #matrix to keep track of number of agents in each state
+    Kgrid.fill(25) # start with agents evenly divided among the states 
+
+    # now iterate using the transition matrix and the policy function 
+    # until a stationary distribution is reached 
+    diff_in_Kgrid=1
+    k = 0
+    while diff_in_Kgrid > tol_for_vfi:
+            k+=1
+            print(k)
+            Kgridnew = np.zeros([na, ny])
+            for y_ind in range(ny):
+                    for a_ind in range(na):
+                        # use policy function to get agent's optimal choice 
+                        # of assets next period assets
+                        next_a=pol_func[a_ind][y_ind]
+                        a_index = np.where(agrid==next_a)[0][0]
+                        
+                        # use transition probability matrix to get 
+                        # the fraction that move to each productivity outcome next period
+                        produc_vec_0=float(Kgrid[a_ind][y_ind])*TransM[y_ind][0]
+                        produc_vec_1=float(Kgrid[a_ind][y_ind])*TransM[y_ind][0]
+                        
+                        # add the mass of agents coming from this a and y combo
+                        # to the new Kgrid
+                        Kgridnew[a_index][0]+=produc_vec_0
+                        Kgridnew[a_index][1]+=produc_vec_1
+                        
+            diff_in_Kgrid = np.max(np.max(abs(Kgrid-Kgridnew)))
+            print(diff_in_Kgrid)
+            Kgrid=Kgridnew
+    
+    # sum all the elements to get aggregate K
+    Kagg=0
+    for a_ind in range(na):
+        Kagg+=agrid[a_ind]*Kgridnew[a_ind][0]+agrid[a_ind]*Kgridnew[a_ind][1]
+    Kprime=Kagg/10000
+    '''
     # get a finer agrid 
     a_gridfiner = np.linspace(a_min,a_max,int(1.5*na))
     
@@ -182,6 +225,7 @@ for i in range(10000): # I guess this is like setting max iterations?
     # times the amount of assets for someone in that bin 
     # then sum all the elements 
     Kprime = np.sum(np.multiply(a_gridfiner, lambd))
+    '''
     
     # apply bisection method to get a new guess for K that is updated to move our 
     # K interval closer to what makes sense given the outcome of the simulation 
@@ -205,8 +249,6 @@ Rstar = (alpha)*(Kstar/L)**(alpha-1)+1-delta
 print(f'Equilibrium Capital: {Kstar}')
 print(f'Equilibrium Interest Rate: {Rstar}')
 
-# answer is wrong
-        
         
         
     
