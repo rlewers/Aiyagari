@@ -114,11 +114,11 @@ for i in range(10000): # I guess this is like setting max iterations?
             for a_ind in range(na):
                 wealth = R*agrid[a_ind] + W*ygrid[y_ind]
                 #wealth = wealth*na
-                max1 = max(np.subtract(wealth,agrid))
+                #max1 = max(np.subtract(wealth,agrid))
                 #if y_ind==0 and a_ind==0:
                     #print(max1)
                 # the below is a 200x1 row vector. It is like 1 row in Carlos's program
-                V_max=max(max1, 1.0e-15)**(1-gamma)/(1-gamma)+beta*(np.matmul(Vnew, TransM[y_ind][:]))
+                V_max=np.maximum(np.subtract(wealth,agrid), 1.0e-15)**(1-gamma)/(1-gamma)+beta*(np.matmul(Vnew, TransM[y_ind][:]))
                 
                 # place stuff into the correct spot in the value, policy, and consumption matrices
                 V[a_ind, y_ind] = np.max(V_max)
