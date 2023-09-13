@@ -12,6 +12,10 @@ import numpy as np
 import math
 import random
 from scipy.interpolate import interp1d
+import time 
+import matplotlib.pyplot as plt
+
+start = time.time()
 
 # Model Parameters
 beta = 0.96 # discount rate
@@ -129,8 +133,8 @@ for i in range(10000): # I guess this is like setting max iterations?
                 con[a_ind, y_ind] = wealth - pol_func[a_ind, y_ind]
         
         diff_in_valfun = np.max(np.max(abs(V-Vnew))) # thanks Elke!
-        if i==0 and k==1:
-           print( V)
+       # if i==0 and k==1:
+           #print( V)
         
     # Do simulation method to get K 
     
@@ -248,6 +252,129 @@ Rstar = (alpha)*(Kstar/L)**(alpha-1)+1-delta
 # display final values 
 print(f'Equilibrium Capital: {Kstar}')
 print(f'Equilibrium Interest Rate: {Rstar}')
+
+##############
+# Make Plots #
+##############
+
+# Value Function 
+plt.subplot(1, 2, 1)
+plt.plot(agrid, V[:,0], label="Low")
+plt.plot(agrid, V[:,1], label="High")
+plt.legend()
+plt.xlabel("a")
+plt.ylabel("V")
+
+# Policy Function
+plt.subplot(1, 2, 2)
+plt.plot(agrid, pol_func[:,0], label="Low")
+plt.plot(agrid, pol_func[:,1], label="High")
+plt.legend()
+plt.xlabel("a")
+plt.ylabel("g(a,e)")
+
+plt.tight_layout()
+plt.show()
+
+# Unconditional Wealth Distribution 
+
+# make unconditional wealth vector 
+Kadd=np.zeros([na, ny])
+for k in range(na):
+    Kadd[k]=Kgrid[k][0]+Kgrid[k][1]
+
+plt.subplot(1,2,1)    
+plt.plot(agrid, Kadd)
+plt.legend()
+plt.xlabel("a")
+plt.ylabel("lambda")
+plt.title("Unconditional Wealth Distribution")    
+    
+# Conditional Wealth Distribution 
+plt.subplot(1,2,2)
+plt.plot(agrid, Kgrid[:,0], label="Low")
+plt.plot(agrid, Kgrid[:,1], label="High")
+plt.legend()
+plt.xlabel("a")
+plt.ylabel("lambda(a,e)")
+plt.title("Conditional Wealth Distribution")
+plt.tight_layout()
+plt.show()
+
+# Aiyagari Diagram
+
+# get asset supply by doing vfi and k simulation without firms focs 
+
+Rplot=np.linspace(1, 1.1, 100) # list of R options 
+Kplot=np.zeros(100)
+for r in range(len(Rplot)):
+    K=((R+delta-1)**(1/(alpha-1)))*(L/alpha)
+    W =(1-alpha)*(K/L)**(alpha)
+    pol_func=np.zeros([na,ny]) # How much should the agent save?
+    Vnew=np.zeros([na,ny])
+    
+    # vfi is the same as before
+    for y_ind in range(ny):
+        # loop over asset choices 
+        for a_ind in range(na):
+            wealth = R*agrid[a_ind] + W*ygrid[y_ind]
+            #wealth = wealth*na
+            #max1 = max(np.subtract(wealth,agrid))
+            #if y_ind==0 and a_ind==0:
+                    #print(max1)
+            # the below is a 200x1 row vector. It is like 1 row in Carlos's program
+            V_max=np.maximum(np.subtract(wealth,agrid), 1.0e-15)**(1-gamma)/(1-gamma)+beta*(np.matmul(Vnew, TransM[y_ind][:]))
+                
+            # place stuff into the correct spot in the value, policy, and consumption matrices
+            V[a_ind, y_ind] = np.max(V_max)
+            #if y_ind==0 and a_ind==0 and i==0:
+                    #print(np.max(V_max))
+            temp = np.argmax(V_max)
+            pol_func[a_ind, y_ind] = agrid[temp]
+            con[a_ind, y_ind] = wealth - pol_func[a_ind, y_ind]
+        
+    diff_in_valfun = np.max(np.max(abs(V-Vnew)))
+    
+    # now do simulation to get asset supply
+    diff_in_Kgrid=1
+    k = 0
+    while diff_in_Kgrid > tol_for_vfi:
+            k+=1
+            print(k)
+            Kgridnew = np.zeros([na, ny])
+            for y_ind in range(ny):
+                    for a_ind in range(na):
+                        # use policy function to get agent's optimal choice 
+                        # of assets next period assets
+                        next_a=pol_func[a_ind][y_ind]
+                        a_index = np.where(agrid==next_a)[0][0]
+                        
+                        # use transition probability matrix to get 
+                        # the fraction that move to each productivity outcome next period
+                        produc_vec_0=float(Kgrid[a_ind][y_ind])*TransM[y_ind][0]
+                        produc_vec_1=float(Kgrid[a_ind][y_ind])*TransM[y_ind][1]
+                        
+                        # add the mass of agents coming from this a and y combo
+                        # to the new Kgrid
+                        Kgridnew[a_index][0]+=produc_vec_0
+                        Kgridnew[a_index][1]+=produc_vec_1
+                        
+            diff_in_Kgrid = np.max(np.max(abs(Kgrid-Kgridnew)))
+            print(diff_in_Kgrid)
+            Kgrid=Kgridnew
+    
+    # sum all the elements to get aggregate K
+    Kagg=0
+    for a_ind in range(na):
+        Kagg+=agrid[a_ind]*Kgridnew[a_ind][0]+agrid[a_ind]*Kgridnew[a_ind][1]
+    Kprime=Kagg/10000
+    Kplot[r]=Kprime
+    
+# Asset Supply 
+plt.plot(Kplot,Rplot)
+
+end = time.time()
+print(end - start)
 
         
         
