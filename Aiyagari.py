@@ -308,34 +308,44 @@ plt.show()
 Rplot=np.linspace(1, 1.1, 100) # list of R options 
 Kplot=np.zeros(100)
 for r in range(len(Rplot)):
-    K=((R+delta-1)**(1/(alpha-1)))*(L/alpha)
+    K=((Rplot[r]+delta-1)**(1/(alpha-1)))*(L/alpha)
     W =(1-alpha)*(K/L)**(alpha)
     pol_func=np.zeros([na,ny]) # How much should the agent save?
     Vnew=np.zeros([na,ny])
     
     # vfi is the same as before
-    for y_ind in range(ny):
-        # loop over asset choices 
-        for a_ind in range(na):
-            wealth = R*agrid[a_ind] + W*ygrid[y_ind]
-            #wealth = wealth*na
-            #max1 = max(np.subtract(wealth,agrid))
-            #if y_ind==0 and a_ind==0:
-                    #print(max1)
-            # the below is a 200x1 row vector. It is like 1 row in Carlos's program
-            V_max=np.maximum(np.subtract(wealth,agrid), 1.0e-15)**(1-gamma)/(1-gamma)+beta*(np.matmul(Vnew, TransM[y_ind][:]))
-                
-            # place stuff into the correct spot in the value, policy, and consumption matrices
-            V[a_ind, y_ind] = np.max(V_max)
-            #if y_ind==0 and a_ind==0 and i==0:
-                    #print(np.max(V_max))
-            temp = np.argmax(V_max)
-            pol_func[a_ind, y_ind] = agrid[temp]
-            con[a_ind, y_ind] = wealth - pol_func[a_ind, y_ind]
-        
-    diff_in_valfun = np.max(np.max(abs(V-Vnew)))
     
+    diff_in_valfun=1 # tells us whether our value function is close enough
+    k=0
+    while diff_in_valfun > tol_for_vfi:
+        k+=1
+        for y_ind in range(ny):
+            # loop over asset choices 
+            for a_ind in range(na):
+                wealth = Rplot[r]*agrid[a_ind] + W*ygrid[y_ind]
+                #wealth = wealth*na
+                #max1 = max(np.subtract(wealth,agrid))
+                #if y_ind==0 and a_ind==0:
+                        #print(max1)
+                # the below is a 200x1 row vector. It is like 1 row in Carlos's program
+                V_max=np.maximum(np.subtract(wealth,agrid), 1.0e-15)**(1-gamma)/(1-gamma)+beta*(np.matmul(Vnew, TransM[y_ind][:]))
+                    
+                # place stuff into the correct spot in the value, policy, and consumption matrices
+                V[a_ind, y_ind] = np.max(V_max)
+                #if y_ind==0 and a_ind==0 and i==0:
+                        #print(np.max(V_max))
+                temp = np.argmax(V_max)
+                pol_func[a_ind, y_ind] = agrid[temp]
+                con[a_ind, y_ind] = wealth - pol_func[a_ind, y_ind]
+            
+        diff_in_valfun = np.max(np.max(abs(V-Vnew)))
+        
     # now do simulation to get asset supply
+    
+    # make a guess at the initial number of agents in each state
+    Kgrid = np.zeros([na, ny]) #matrix to keep track of number of agents in each state
+    Kgrid.fill(25) # start with agents evenly divided among the states 
+    
     diff_in_Kgrid=1
     k = 0
     while diff_in_Kgrid > tol_for_vfi:
