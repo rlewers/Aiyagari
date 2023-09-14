@@ -152,7 +152,7 @@ for i in range(10000): # I guess this is like setting max iterations?
     k = 0
     while diff_in_Kgrid > tol_for_vfi:
             k+=1
-            print(k)
+            #print(k)
             Kgridnew = np.zeros([na, ny])
             for y_ind in range(ny):
                     for a_ind in range(na):
@@ -172,7 +172,7 @@ for i in range(10000): # I guess this is like setting max iterations?
                         Kgridnew[a_index][1]+=produc_vec_1
                         
             diff_in_Kgrid = np.max(np.max(abs(Kgrid-Kgridnew)))
-            print(diff_in_Kgrid)
+            #print(diff_in_Kgrid)
             Kgrid=Kgridnew
     
     # sum all the elements to get aggregate K
@@ -303,12 +303,17 @@ plt.show()
 
 # Aiyagari Diagram
 
-# get asset supply by doing vfi and k simulation without firms focs 
+# get asset supply by doing vfi and k simulation without making firms focs firm
+# asset demand match to HH asset supply
 
 Rplot=np.linspace(1, 1.1, 100) # list of R options 
-Kplot=np.zeros(100)
+KSupp=np.zeros(len(Rplot))
+KDem=np.zeros(len(Rplot))
 for r in range(len(Rplot)):
-    K=((Rplot[r]+delta-1)**(1/(alpha-1)))*(L/alpha)
+    K=(((Rplot[r]+delta-1)/alpha)**(1/(alpha-1)))*L
+    #K=((Rplot[r]+delta-1)**(1/(alpha-1)))*(L/alpha)
+    # firm asset demand vector
+    KDem[r]=K
     W =(1-alpha)*(K/L)**(alpha)
     pol_func=np.zeros([na,ny]) # How much should the agent save?
     Vnew=np.zeros([na,ny])
@@ -318,6 +323,10 @@ for r in range(len(Rplot)):
     diff_in_valfun=1 # tells us whether our value function is close enough
     k=0
     while diff_in_valfun > tol_for_vfi:
+        Vnew = V
+        V = np.zeros([na, ny])
+        pol_func = np.zeros([na, ny])
+        con = np.zeros([na, ny])
         k+=1
         for y_ind in range(ny):
             # loop over asset choices 
@@ -341,16 +350,17 @@ for r in range(len(Rplot)):
         diff_in_valfun = np.max(np.max(abs(V-Vnew)))
         
     # now do simulation to get asset supply
+    # need to know for each R, what will HH asset supply be
     
     # make a guess at the initial number of agents in each state
     Kgrid = np.zeros([na, ny]) #matrix to keep track of number of agents in each state
     Kgrid.fill(25) # start with agents evenly divided among the states 
     
     diff_in_Kgrid=1
-    k = 0
+    #k = 0
     while diff_in_Kgrid > tol_for_vfi:
-            k+=1
-            print(k)
+            #k+=1
+            #print(k)
             Kgridnew = np.zeros([na, ny])
             for y_ind in range(ny):
                     for a_ind in range(na):
@@ -370,7 +380,7 @@ for r in range(len(Rplot)):
                         Kgridnew[a_index][1]+=produc_vec_1
                         
             diff_in_Kgrid = np.max(np.max(abs(Kgrid-Kgridnew)))
-            print(diff_in_Kgrid)
+            #print(diff_in_Kgrid)
             Kgrid=Kgridnew
     
     # sum all the elements to get aggregate K
@@ -378,13 +388,19 @@ for r in range(len(Rplot)):
     for a_ind in range(na):
         Kagg+=agrid[a_ind]*Kgridnew[a_ind][0]+agrid[a_ind]*Kgridnew[a_ind][1]
     Kprime=Kagg/10000
-    Kplot[r]=Kprime
+    KSupp[r]=Kprime
     
 # Asset Supply 
-plt.plot(Kplot,Rplot)
+plt.plot(KSupp,Rplot)
+plt.plot(KDem,Rplot)
+plt.xlabel("a")
+plt.ylabel("R")
+plt.title("Aiyagari Diagram")
+plt.show()  
 
 end = time.time()
-print(end - start)
+run_time=end - start
+print(f'Program takes {run_time} seconds')
 
         
         
