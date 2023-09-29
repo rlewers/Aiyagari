@@ -326,46 +326,21 @@ for r in range(len(Rplot)):
     # need to know for each R, what will HH asset supply be
     
     # make a guess at the initial number of agents in each state
-    #Kgrid = np.zeros([na, ny]) #matrix to keep track of number of agents in each state
-    #Kgrid.fill(25) # start with agents evenly divided among the states 
-    
-    na_finer=400
-    Kgrid = np.zeros([na_finer, ny]) #matrix to keep track of number of agents in each state
-    # 10 people in each state, 800 states --> 8000 people in this economy
-    T=8000
-    Kgrid.fill(10) # start with agents evenly divided among the states 
-    
-    # make policy function finer as well by interpolating the function values from 
-    # pol_func onto a_gridfiner 
-    a_gridfiner =np.linspace(a_min,a_max,na_finer)
-    #pol_func_finer = np.interp(agrid, pol_func, a_gridfiner)
-    #f = interp1d(agrid, pol_func, axis=0, kind='linear')
-    #pol_func_finer = f(a_gridfiner)
-    #pol_func_finer = np.interp(a_gridfiner, agrid, pol_func_high, axis=0)
-    
-    # separate policy function into 2 columns 
-    pol_func_low = pol_func[:,0]
-    pol_func_high = pol_func[:,1]
-    
-    #interpolate separately for low and high policy functions 
-    pol_func_finer_high = np.interp(a_gridfiner, agrid, pol_func_high)
-    pol_func_finer_low = np.interp(a_gridfiner, agrid, pol_func_low)
-    pol_func_finer = np.column_stack((pol_func_finer_low, pol_func_finer_high))
-
+    Kgrid = np.zeros([na, ny]) #matrix to keep track of number of agents in each state
+    Kgrid.fill(25) # start with agents evenly divided among the states 
     
     diff_in_Kgrid=1
     #k = 0
     while diff_in_Kgrid > tol_for_vfi:
             #k+=1
             #print(k)
-            Kgridnew = np.zeros([na_finer, ny])
+            Kgridnew = np.zeros([na, ny])
             for y_ind in range(ny):
-                    for a_ind in range(na_finer):
+                    for a_ind in range(na):
                         # use policy function to get agent's optimal choice 
                         # of assets next period assets
-                        next_a=pol_func_finer[a_ind][y_ind]
-                       # a_index = np.where(agrid==next_a)[0][0]
-                        a_index = (np.abs(a_gridfiner - next_a)).argmin()
+                        next_a=pol_func[a_ind][y_ind]
+                        a_index = np.where(agrid==next_a)[0][0]
                         
                         # use transition probability matrix to get 
                         # the fraction that move to each productivity outcome next period
@@ -383,9 +358,9 @@ for r in range(len(Rplot)):
     
     # sum all the elements to get aggregate K
     Kagg=0
-    for a_ind in range(na_finer):
-        Kagg+=a_gridfiner[a_ind]*Kgridnew[a_ind][0]+a_gridfiner[a_ind]*Kgridnew[a_ind][1]
-    Kprime=Kagg/T
+    for a_ind in range(na):
+        Kagg+=agrid[a_ind]*Kgridnew[a_ind][0]+agrid[a_ind]*Kgridnew[a_ind][1]
+    Kprime=Kagg/10000
     KSupp[r]=Kprime
     
 # Asset Supply 
